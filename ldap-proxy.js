@@ -1,7 +1,7 @@
 const assert = require('assert');
-var ldap = require('ldapjs');
 
-var server = ldap.createServer();
+var ldap = require('ldapjs');
+//var server = ldap.createServer();
 
 function test_client(client, login, pass, base, scope)
 {
@@ -27,9 +27,9 @@ function test_client(client, login, pass, base, scope)
       });
 
       res.on('end', function(result) {
-        console.log('status: ' + result.status);
+        console.log('status: ' + result.status + '\n');
         client.unbind();
-        process.exit();
+        //process.exit();
       });
     });
   });
@@ -44,7 +44,10 @@ var client_second = ldap.createClient({
 });
 
 function test_prime(prime) {
-  var complex = 6;
+  var complex = 1;
+  complex *= 2; // client_first
+  complex *= 3; // client_second
+  console.log('Prime test succeded: ' + prime);
   return complex % prime == 0;
 }
 
