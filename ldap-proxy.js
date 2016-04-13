@@ -1,7 +1,33 @@
 const assert = require('assert');
+const exec = require('child_process');
 
 var ldap = require('ldapjs');
 var server = ldap.createServer();
+
+var proxy_config =
+[
+  {
+    mount: 'o=users,dc=grzegorzkowalski,dc=pl',
+    url: 'ldap://ldap.forumsys.com',
+    login: 'uid=tesla,dc=example,dc=com',
+    password: 'password',
+    base: 'dc=example,dc=com',
+    scope: 'sub',
+  },
+  {
+    mount: 'o=users,dc=grzegorzkowalski,dc=pl',
+    url: 'ldap://www.zflexldap.com',
+    login: 'cn=ro_admin,ou=sysadmins,dc=zflexsoftware,dc=com',
+    password: 'zflexpass',
+    base: 'ou=sysadmins,dc=zflexsoftware,dc=com',
+    scope: 'sub',
+  }
+];
+
+function ldap_search(url, login, password, base, scope)
+{
+
+}
 
 function test_client(client, login, pass, base, scope)
 {
@@ -29,7 +55,6 @@ function test_client(client, login, pass, base, scope)
       res.on('end', function(result) {
         console.log('status: ' + result.status + '\n');
         client.unbind();
-        //process.exit();
       });
     });
   });
@@ -43,55 +68,25 @@ var client_second = ldap.createClient({
   url: 'ldap://www.zflexldap.com'
 });
 
-function test_prime(prime) {
-  var complex = 1;
-  complex *= 2; // client_first
-  complex *= 3; // client_second
-  complex *= 5; // server timeout
-  console.log('Prime test succeded: ' + prime);
-  return complex % prime == 0;
-}
-
-if (test_prime(2)) test_client(
-  client_first,
-  'uid=tesla,dc=example,dc=com',
-  'password',
-  'dc=example,dc=com',
-  'sub'
-);
-
-if (test_prime(3)) test_client(
-  client_second,
-  'cn=ro_admin,ou=sysadmins,dc=zflexsoftware,dc=com',
-  'zflexpass',
-  'ou=sysadmins,dc=zflexsoftware,dc=com',
-  'sub'
-);
-
 server.listen(1389, '127.0.0.1', function() {
-  console.log('LDAP server listening at: ' + server.url);
+  console.log('LDAP server listening at ' + server.url + ' for 5 seconds');
 
-  if (test_prime(5))
-  {
-    setTimeout(function () {
-      console.log('LDAP server shutdown after timeout started.');
-      server.close();
-      console.log('LDAP server shutdown after timeout done.');
-    }, 5000);
-  }
+  setTimeout(function () {
+    console.log('LDAP server shutdown after timeout started.');
+    server.close();
+    console.log('LDAP server shutdown after timeout done.');
+  }, 5000);
 });
 
 server.bind('cn=anonymous', function(req, res, next) {
-  console.log('bind DN: ' + req.dn.toString());
-  console.log('bind PW: ' + req.credentials);
+  console.log('bind login DN: ' + req.dn.toString());
+  console.log('bind password: ' + req.credentials);
   res.end();
   return next();
 });
 
 server.bind('cn=halt', function(req, res, next) {
-  console.log('LDAP server shutdown after timeout started.');
   server.close();
-  console.log('LDAP server shutdown after timeout done.');
 });
 
 server.search('o=users,dc=grzegorzkowalski,dc=pl', function(req, res, next) {
