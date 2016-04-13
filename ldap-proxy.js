@@ -3,6 +3,26 @@ const assert = require('assert');
 var ldap = require('ldapjs');
 var server = ldap.createServer();
 
+var proxy_config =
+[
+  {
+    mount: 'o=users,dc=grzegorzkowalski,dc=pl',
+    url: 'ldap://ldap.forumsys.com',
+    login: 'uid=tesla,dc=example,dc=com',
+    password: 'password',
+    base: 'dc=example,dc=com',
+    scope: 'sub',
+  },
+  {
+    mount: 'o=users,dc=grzegorzkowalski,dc=pl',
+    url: 'ldap://www.zflexldap.com',
+    login: 'cn=ro_admin,ou=sysadmins,dc=zflexsoftware,dc=com',
+    password: 'zflexpass',
+    base: 'ou=sysadmins,dc=zflexsoftware,dc=com',
+    scope: 'sub',
+  }
+];
+
 function test_client(client, login, pass, base, scope)
 {
   client.bind(login, pass, function (err)
@@ -35,14 +55,6 @@ function test_client(client, login, pass, base, scope)
   });
 }
 
-var client_first = ldap.createClient({
-  url: 'ldap://ldap.forumsys.com'
-});
-
-var client_second = ldap.createClient({
-  url: 'ldap://www.zflexldap.com'
-});
-
 function test_prime(prime) {
   var complex = 1;
   complex *= 2; // client_first
@@ -52,21 +64,35 @@ function test_prime(prime) {
   return complex % prime == 0;
 }
 
-if (test_prime(2)) test_client(
-  client_first,
-  'uid=tesla,dc=example,dc=com',
-  'password',
-  'dc=example,dc=com',
-  'sub'
-);
+if (test_prime(2))
+{
+  var client_first = ldap.createClient({
+    url: 'ldap://ldap.forumsys.com'
+  });
 
-if (test_prime(3)) test_client(
-  client_second,
-  'cn=ro_admin,ou=sysadmins,dc=zflexsoftware,dc=com',
-  'zflexpass',
-  'ou=sysadmins,dc=zflexsoftware,dc=com',
-  'sub'
-);
+  test_client(
+    client_first,
+    'uid=tesla,dc=example,dc=com',
+    'password',
+    'dc=example,dc=com',
+    'sub'
+  );
+}
+
+if (test_prime(3))
+{
+  var client_second = ldap.createClient({
+    url: 'ldap://www.zflexldap.com'
+  });
+
+  test_client(
+    client_second,
+    'cn=ro_admin,ou=sysadmins,dc=zflexsoftware,dc=com',
+    'zflexpass',
+    'ou=sysadmins,dc=zflexsoftware,dc=com',
+    'sub'
+  );
+}
 
 server.listen(1389, '127.0.0.1', function() {
   console.log('LDAP server listening at: ' + server.url);
