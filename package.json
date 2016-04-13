@@ -1,13 +1,12 @@
 {
   "name": "ldap-proxy",
   "version": "0.0.0",
-  "description": "",
+  "description": "LDAP proxy server working in one-to-many mode.",
   "main": "ldap-proxy.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Grzegorz Kowalski",
-  "license": "GPL",
+  "author": "Grzegorz Kowalski, grzegorz.adam.kowalski@outlook.com",
   "dependencies": {
     "ldapjs": "~1.0.0"
   }
