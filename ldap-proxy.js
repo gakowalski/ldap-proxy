@@ -1,4 +1,5 @@
 const assert = require('assert');
+const execFileSync = require('child_process').execFileSync;
 
 var ldap = require('ldapjs');
 var server = ldap.createServer();
@@ -23,118 +24,79 @@ var proxy_config =
   }
 ];
 
-function test_client(client, login, pass, base, scope)
+function ldap_search(proxy)
 {
-  client.bind(login, pass, function (err)
-  {
-    assert.ifError(err);
+  var args =
+  [
+    '-w' + proxy.password,
+    '-H' + proxy.url,
+    '-D' + proxy.login,
+    '-b' + proxy.base,
+    '-s' + proxy.scope,
+    '-LLL'
+  ];
 
-    var options = { scope: scope }
+  var output = execFileSync('ldapsearch', args, { encoding: 'utf-8'});
 
-    client.search(base, options, function (err, res) {
-      assert.ifError(err);
-
-      res.on('searchEntry', function(entry) {
-        console.log('entry: ' + JSON.stringify(entry.object));
-      });
-
-      res.on('searchReference', function(referral) {
-        console.log('referral: ' + referral.uris.join());
-      });
-
-      res.on('error', function(err) {
-        console.error('error: ' + err.message);
-      });
-
-      res.on('end', function(result) {
-        console.log('status: ' + result.status + '\n');
-        client.unbind();
-        //process.exit();
-      });
+  // text processing
+  var entries = output.split('\n\n');
+  entries.forEach(function (entry, index) {
+    entries[index] = entry.split('\n');
+    entries[index].forEach(function (attribute, index2) {
+      entries[index][index2] = attribute.split(':\ ');
     });
   });
-}
 
-function test_prime(prime) {
-  var complex = 1;
-  complex *= 2; // client_first
-  complex *= 3; // client_second
-  complex *= 5; // server timeout
-  console.log('Prime test succeded: ' + prime);
-  return complex % prime == 0;
-}
+  // object structuring
+  var results = new Array();
+  entries.forEach(function (entry, index) {
+    var obj = {};
 
-if (test_prime(2))
-{
-  var client_first = ldap.createClient({
-    url: 'ldap://ldap.forumsys.com'
+    obj.dn = entry[0][1];
+    obj.attributes = {};
+
+    entry.forEach(function (attribute, index) {
+      if (entry[index][0] !== 'dn') {
+        obj.attributes[entry[index][0]] = entry[index][1];
+      }
+    });
+
+    results.push(obj);
   });
-
-  test_client(
-    client_first,
-    'uid=tesla,dc=example,dc=com',
-    'password',
-    'dc=example,dc=com',
-    'sub'
-  );
-}
-
-if (test_prime(3))
-{
-  var client_second = ldap.createClient({
-    url: 'ldap://www.zflexldap.com'
-  });
-
-  test_client(
-    client_second,
-    'cn=ro_admin,ou=sysadmins,dc=zflexsoftware,dc=com',
-    'zflexpass',
-    'ou=sysadmins,dc=zflexsoftware,dc=com',
-    'sub'
-  );
+  return results;
 }
 
 server.listen(1389, '127.0.0.1', function() {
-  console.log('LDAP server listening at: ' + server.url);
+  console.log('LDAP server listening at ' + server.url + ' for 5 seconds');
 
-  if (test_prime(5))
-  {
-    setTimeout(function () {
-      console.log('LDAP server shutdown after timeout started.');
-      server.close();
-      console.log('LDAP server shutdown after timeout done.');
-    }, 5000);
-  }
+  setTimeout(function () {
+    console.log('LDAP server shutdown after timeout started.');
+    server.close();
+    console.log('LDAP server shutdown after timeout done.');
+  }, 5000);
 });
 
 server.bind('cn=anonymous', function(req, res, next) {
-  console.log('bind DN: ' + req.dn.toString());
-  console.log('bind PW: ' + req.credentials);
+  console.log('bind login DN: ' + req.dn.toString());
+  console.log('bind password: ' + req.credentials);
   res.end();
   return next();
 });
 
 server.bind('cn=halt', function(req, res, next) {
-  console.log('LDAP server shutdown after timeout started.');
   server.close();
-  console.log('LDAP server shutdown after timeout done.');
 });
 
 server.search('o=users,dc=grzegorzkowalski,dc=pl', function(req, res, next) {
-  req.users = {};
+  proxy_config.forEach(function (proxy) {
+    if (proxy.mount === 'o=users,dc=grzegorzkowalski,dc=pl') {
+      var entries = ldap_search(proxy);
 
-  req.users[0] = {
-    dn: 'cn=grzegorz.kowalski,o=users,dc=grzegorzkowalski,dc=pl',
-    attributes: {
-      cn: 'cn=grzegorz.kowalski',
-      uid: '1',
-      objectClass: 'person'
+      Object.keys(entries).forEach(function(k) {
+        if (req.filter.matches(entries[k].attributes))
+          res.send(entries[k]);
+      });
     }
-  }
-
-  Object.keys(req.users).forEach(function(k) {
-    if (req.filter.matches(req.users[k].attributes))
-      res.send(req.users[k]);
   });
 
   res.end();
