@@ -24,19 +24,24 @@ var proxy_config =
   }
 ];
 
-function ldap_search(proxy)
+function ldap_search(proxy, base)
 {
   var args =
   [
     '-w', proxy.password,
     '-H', proxy.url,
     '-D', proxy.login,
-    '-b', proxy.base,
+    '-b', base,
     '-s', proxy.scope,
     '-LLL'
   ];
 
-  var output = execFileSync('ldapsearch', args, { encoding: 'utf-8'});
+  try {
+    var output = execFileSync('ldapsearch', args, { encoding: 'utf-8'});
+  }
+  catch (err) {
+    return new Array(); // empty resultset
+  }
 
   // text processing
   var entries = output.split('\n\n');
@@ -54,6 +59,10 @@ function ldap_search(proxy)
 
     obj.dn = entry[0][1];
     obj.attributes = {};
+
+    if (typeof obj.dn == 'undefined') {
+      return;
+    }
 
     entry.forEach(function (attribute, index) {
       if (entry[index][0] !== 'dn') {
@@ -147,10 +156,14 @@ server.search('o=users,dc=grzegorzkowalski,dc=pl', function(req, res, next) {
 
   proxy_config.forEach(function (proxy) {
     if (proxy.mount === 'o=users,dc=grzegorzkowalski,dc=pl') {
-      var entries = ldap_search(proxy);
+      var entries = ldap_search(
+        proxy,
+        req.dn.toString().replace(ldap.parseDN('o=users,dc=grzegorzkowalski,dc=pl').toString(), proxy.base).replace(' ', '')
+      );
 
       Object.keys(entries).forEach(function(k) {
         if (req.filter.matches(entries[k].attributes))
+          entries[k].dn = entries[k].dn.replace(proxy.base, 'o=users,dc=grzegorzkowalski,dc=pl');
           res.send(entries[k]);
       });
     }
