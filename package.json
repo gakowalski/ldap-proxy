@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Grzegorz Kowalski, grzegorz.adam.kowalski@outlook.com",
+  "author": "Grzegorz Kowalski, grzegorz.kowalski@pot.gov.pl",
   "dependencies": {
     "ldapjs": "~1.0.0"
   }
