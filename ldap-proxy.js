@@ -13,6 +13,7 @@ var proxy_config =
     password: 'password',
     base: 'dc=example,dc=com',
     scope: 'sub',
+    filter: '(objectClass=*)'
   },
   {
     mount: 'o=users,dc=grzegorzkowalski,dc=pl',
@@ -21,10 +22,11 @@ var proxy_config =
     password: 'zflexpass',
     base: 'ou=sysadmins,dc=zflexsoftware,dc=com',
     scope: 'sub',
+    filter: '(objectClass=*)'
   }
 ];
 
-function ldap_search(proxy, base)
+function ldap_search(proxy, base, filters, attributes)
 {
   var args =
   [
@@ -33,7 +35,8 @@ function ldap_search(proxy, base)
     '-D', proxy.login,
     '-b', base,
     '-s', proxy.scope,
-    '-LLL'
+    '-LLL',
+    proxy.filter,
   ];
 
   try {
@@ -149,6 +152,12 @@ server.bind('o=users,dc=grzegorzkowalski,dc=pl', function(req, res, next) {
 
 
 server.search('o=users,dc=grzegorzkowalski,dc=pl', function(req, res, next) {
+  console.log('base object: ' + req.dn.toString());
+  console.log('scope: ' + req.scope);
+  console.log('filter: ' + req.filter.toString());
+  console.log('attributes: ' + req.attributes);
+  console.log('size limit: ' + req.sizeLimit);
+  console.log('time limit: ' + req.timeLimit);
 
   if (req.connection.ldap.bindDN.equals('cn=anonymous')) {
     return next(new ldap.InsufficientAccessRightsError());
@@ -161,10 +170,13 @@ server.search('o=users,dc=grzegorzkowalski,dc=pl', function(req, res, next) {
         req.dn.toString().replace(ldap.parseDN('o=users,dc=grzegorzkowalski,dc=pl').toString(), proxy.base).replace(' ', '')
       );
 
+      console.log('..entries: ' + entries.length);
+
       Object.keys(entries).forEach(function(k) {
-        if (req.filter.matches(entries[k].attributes))
+        if (req.filter.matches(entries[k].attributes)) {
           entries[k].dn = entries[k].dn.replace(proxy.base, 'o=users,dc=grzegorzkowalski,dc=pl');
           res.send(entries[k]);
+        }
       });
     }
   });
