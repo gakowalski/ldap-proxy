@@ -1,9 +1,12 @@
-const assert = require('assert');
 const execFileSync = require('child_process').execFileSync;
 
 var ldap = require('ldapjs');
 var server = ldap.createServer();
 
+// possible problems: when all joined branches have different attributes for
+// mount DN
+// so there is a need to implement joining of entries
+// and caching
 var proxy_config =
 [
   {
