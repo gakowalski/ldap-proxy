@@ -13,7 +13,9 @@ var proxy_config =
     password: 'password',
     base: 'dc=example,dc=com',
     scope: 'sub',
-    filter: '(objectClass=*)'
+    filter: '(objectClass=*)',
+    //attributes: ['objectClass'],
+    attributes: [],
   },
   {
     mount: 'o=users,dc=grzegorzkowalski,dc=pl',
@@ -22,11 +24,13 @@ var proxy_config =
     password: 'zflexpass',
     base: 'ou=sysadmins,dc=zflexsoftware,dc=com',
     scope: 'sub',
-    filter: '(objectClass=*)'
+    filter: '(objectClass=*)',
+    //attributes: ['objectClass'],
+    attributes: [],
   }
 ];
 
-function ldap_search(proxy, base, filters, attributes)
+function ldap_search(proxy, base)
 {
   var args =
   [
@@ -35,9 +39,13 @@ function ldap_search(proxy, base, filters, attributes)
     '-D', proxy.login,
     '-b', base,
     '-s', proxy.scope,
+    '-S', 'dn',
     '-LLL',
     proxy.filter,
   ];
+
+  args = args.concat(proxy.attributes);
+  console.log(args.toString());
 
   try {
     var output = execFileSync('ldapsearch', args, { encoding: 'utf-8'});
